@@ -19,14 +19,13 @@
 - connect to remote system (remote_host) with scp client as user (remote_user) with user password (remote_user_password)
 - downloads remote file (remote_file) from remote directory (remote_path) to local directory (local_path) and set name for downloaded file based on pattern "filename-user@host"
 
-> Note: Do not use final slash in paths.
-
 **Usage**
 <pre>
 # ./scp_remotefile_to_localfile.exp [remote_user] [remote_user_password] [remote_host] [remote_file] [remote_path] [local_path]
 # ./scp_remotefile_to_localfile.exp system-monitor pass 10.0.0.95 id_dsa /home/system-monitor/.ssh /home/ares/.ssh
 </pre>
 
+> Note: Do not use final slash in paths.
 
 ### Full example of settings remote system environment for SSH key-based authentication
 <pre>
