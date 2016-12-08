@@ -1,0 +1,73 @@
+#!/usr/bin/expect -f
+#
+# script : deploy_ssh_key.exp
+# author : lala @ linuxor . sk
+# descr  : ssh auto login + su + create MONITOR account + generate SSH keys on remote host for MONITOR account
+# date   : march @ 2012
+# version: 0.1
+#
+# usage  : deploy_ssh_key.exp user password rootpassword host ssh_user ssh_user_pass
+# 
+# FOR DEBUG
+#exp_internal 1
+
+set user [lrange $argv 0 0]
+set password [lrange $argv 1 1]
+set rootpassword [lrange $argv 2 2]
+set host [lrange $argv 3 3]
+set system_monitor_account [lrange $argv 4 4]
+set system_monitor_account_pass [lrange $argv 5 5]
+
+set command_su {su -}
+
+set timeout -1
+set ende 0
+
+# connect to remote host ($host)
+spawn ssh $user@$host
+match_max 100000
+
+while {$ende==0} {
+# for accepting ssh fingerprint -> enter "yes"
+# for password prompt -> enter "$password"
+# for prompt -> send command "su -" to become root
+    expect {
+	"*yes/no*" {send -- "yes\r"} \
+	"*?assword:*" {send -- "$password\r"}
+	"*@*~*" {
+	    send "$command_su\r"
+	    set ende [expr $ende+1]
+	    }
+	}
+}
+
+# for su password prompt -> enter "$rootpassword"
+expect "*?assword:*" {send -- "$rootpassword\r"}
+
+# for root prompt (#) -> create user with home dir + /bin/bash as shell
+expect "#" {send -- "useradd -s /bin/bash -m $system_monitor_account\r"}
+
+# for root prompt (#) -> set password for created user (system-monitor)
+expect "#" {send "passwd $system_monitor_account\r"}
+expect "*?nter*?assword:*" {send -- "$system_monitor_account_pass\r"}
+expect "*?etype*?assword:*" {send -- "$system_monitor_account_pass\r"}
+
+# for account "system-monitor" -> create SSH keys
+expect "#" {send "su - $system_monitor_account\r"}
+expect "*@*~*" {send "ssh-keygen -t dsa\r"}
+expect "*save*key" {send "\r"}
+expect "*Enter*passphrase*" {send "\r"}
+expect "*Enter*passphrase*" {send "\r"}
+
+# write SSH public key to file "authorized_keys"
+expect "*@*~*" {send -- "cat /home/$system_monitor_account/.ssh/id_dsa.pub>>/home/$system_monitor_account/.ssh/authorized_keys\r"}
+expect "*@*~*" {send -- "chmod 600 /home/$system_monitor_account/.ssh/authorized_keys\r"}
+
+# exit system-monitor prompt on remote host
+expect "*@*~*" {send "exit\r"}
+
+# exit root prompt on remote host
+expect "*?ogout" {send "exit\r"}
+
+# exit deploy user prompt on remote host
+expect "*?ogout" {send "exit\r"}
